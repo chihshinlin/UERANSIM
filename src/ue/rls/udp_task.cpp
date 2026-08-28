@@ -21,6 +21,8 @@ static constexpr const int LOOP_PERIOD = 1000;
 static constexpr const int RECEIVE_TIMEOUT = 200;
 static constexpr const int HEARTBEAT_THRESHOLD = 2000; // (LOOP_PERIOD + RECEIVE_TIMEOUT)'dan büyük olmalı
 
+static constexpr const size_t MAX_CELL_COUNT = 256;
+
 namespace nr::ue
 {
 
@@ -93,6 +95,12 @@ void RlsUdpTask::receiveRlsPdu(const InetAddress &addr, std::unique_ptr<rls::Rls
     {
         if (!m_cells.count(msg->sti))
         {
+            if (m_cells.size() >= MAX_CELL_COUNT)
+            {
+                m_logger->warn("Max cell count reached, ignoring new cell");
+                return;
+            }
+
             m_cells[msg->sti].cellId = ++m_cellIdCounter;
             m_cellIdToSti[m_cells[msg->sti].cellId] = msg->sti;
         }

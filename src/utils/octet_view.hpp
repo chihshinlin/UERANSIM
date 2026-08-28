@@ -13,11 +13,11 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <stdexcept>
 #include <utility>
 
 class OctetString;
 
-// TODO: add bound check
 class OctetView
 {
     const uint8_t *data;
@@ -30,11 +30,15 @@ class OctetView
 
     inline octet peek() const
     {
+        if (index >= size)
+            throw std::out_of_range("OctetView::peek out of bounds");
         return data[index];
     }
 
     inline octet peek(int offset) const
     {
+        if (offset < 0 || index + static_cast<size_t>(offset) >= size)
+            throw std::out_of_range("OctetView::peek out of bounds");
         return data[index + offset];
     }
 
@@ -50,6 +54,8 @@ class OctetView
 
     inline octet read() const
     {
+        if (index >= size)
+            throw std::out_of_range("OctetView::read out of bounds");
         return data[index++];
     }
 
@@ -121,6 +127,11 @@ class OctetView
     inline bool hasNext() const
     {
         return index < size;
+    }
+
+    inline size_t remainingSize() const
+    {
+        return size - index;
     }
 
     OctetString readOctetString(int length) const;

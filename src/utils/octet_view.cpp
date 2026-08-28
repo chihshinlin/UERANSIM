@@ -21,10 +21,12 @@ OctetView::OctetView(const uint8_t *data, size_t size) : data(data), index(0), s
 
 OctetString OctetView::readOctetString(int length) const
 {
+    if (length < 0)
+        throw std::out_of_range("readOctetString: negative length");
     if (length == 0)
         return {};
-    else if (index + length > size)
-        throw std::out_of_range("Invalid arguments for readOctetString");
+    if (index + static_cast<size_t>(length) > size)
+        throw std::out_of_range("readOctetString: out of bounds");
 
     std::vector<uint8_t> v{data + index, data + index + length};
     index += length;
@@ -33,6 +35,8 @@ OctetString OctetView::readOctetString(int length) const
 
 OctetString OctetView::readOctetString(size_t length) const
 {
+    if (length > static_cast<size_t>(INT32_MAX))
+        throw std::out_of_range("readOctetString: length exceeds INT32_MAX");
     return readOctetString(static_cast<int>(length));
 }
 
@@ -43,6 +47,8 @@ OctetString OctetView::readOctetString() const
 
 std::string OctetView::readUtf8String(int length) const
 {
+    if (length < 0 || index + static_cast<size_t>(length) > size)
+        throw std::out_of_range("readUtf8String: out of bounds");
     auto res = std::string(data + index, data + index + length);
     index += length;
     return res;
@@ -50,5 +56,7 @@ std::string OctetView::readUtf8String(int length) const
 
 std::string OctetView::readUtf8String(size_t length) const
 {
+    if (length > static_cast<size_t>(INT32_MAX))
+        throw std::out_of_range("readUtf8String: length exceeds INT32_MAX");
     return readUtf8String(static_cast<int>(length));
 }

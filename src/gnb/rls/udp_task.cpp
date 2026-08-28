@@ -26,13 +26,16 @@ static constexpr const int HEARTBEAT_THRESHOLD = 2000; // (LOOP_PERIOD + RECEIVE
 
 static constexpr const int MIN_ALLOWED_DBM = -120;
 
+static constexpr const size_t MAX_UE_COUNT = 1024;
+
 static int EstimateSimulatedDbm(const Vector3 &myPos, const Vector3 &uePos)
 {
-    int deltaX = myPos.x - uePos.x;
-    int deltaY = myPos.y - uePos.y;
-    int deltaZ = myPos.z - uePos.z;
+    double deltaX = static_cast<double>(myPos.x) - static_cast<double>(uePos.x);
+    double deltaY = static_cast<double>(myPos.y) - static_cast<double>(uePos.y);
+    double deltaZ = static_cast<double>(myPos.z) - static_cast<double>(uePos.z);
 
-    int distance = static_cast<int>(std::sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ));
+    double distSq = deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ;
+    int distance = static_cast<int>(std::sqrt(distSq));
     if (distance == 0)
         return -1; // 0 may be confusing for people
     return -distance;
@@ -109,9 +112,16 @@ void RlsUdpTask::receiveRlsPdu(const InetAddress &addr, std::unique_ptr<rls::Rls
         }
         else
         {
+            if (m_ueMap.size() >= MAX_UE_COUNT)
+            {
+                m_logger->warn("Max UE count reached, rejecting new UE");
+                return;
+            }
+
             int ueId = ++m_newIdCounter;
 
             m_stiToUe[msg->sti] = ueId;
+            m_ueMap[ueId].sti = msg->sti;
             m_ueMap[ueId].address = addr;
             m_ueMap[ueId].lastSeen = utils::CurrentTimeMillis();
 

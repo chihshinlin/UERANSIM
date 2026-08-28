@@ -123,7 +123,7 @@ void RlsControlTask::handleRlsMessage(int ueId, rls::RlsMessage &msg)
     else if (msg.msgType == rls::EMessageType::PDU_TRANSMISSION)
     {
         auto &m = (rls::RlsPduTransmission &)msg;
-        if (m.pduId != 0)
+        if (m.pduId != 0 && m_pendingAck[ueId].size() < MAX_PDU_COUNT)
             m_pendingAck[ueId].push_back(m.pduId);
 
         if (m.pduType == rls::EPduType::DATA)
@@ -136,6 +136,12 @@ void RlsControlTask::handleRlsMessage(int ueId, rls::RlsMessage &msg)
         }
         else if (m.pduType == rls::EPduType::RRC)
         {
+            if (m.payload > static_cast<uint32_t>(rrc::RrcChannel::UL_DCCH))
+            {
+                m_logger->err("Invalid RRC channel value: %d", m.payload);
+                return;
+            }
+
             auto w = std::make_unique<NmGnbRlsToRls>(NmGnbRlsToRls::UPLINK_RRC);
             w->ueId = ueId;
             w->rrcChannel = static_cast<rrc::RrcChannel>(m.payload);
@@ -240,12 +246,12 @@ void RlsControlTask::onAckControlTimerExpired()
 
 void RlsControlTask::onAckSendTimerExpired()
 {
-    auto copy = m_pendingAck;
+    auto copy = std::move(m_pendingAck);
     m_pendingAck.clear();
 
     for (auto &item : copy)
     {
-        if (!item.second.empty())
+        if (item.second.empty())
             continue;
 
         rls::RlsPduTransmissionAck msg{m_sti};
